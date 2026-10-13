@@ -1,0 +1,12 @@
+# Streamlit settings for the dashboard (read when Streamlit starts from the project folder).
+
+[server]
+# Serve on this PC only (IPv4 loopback), not on the local network (PLAN D38).
+address = "127.0.0.1"
+# Not Streamlit's default 8501, which is left free for other apps.
+port = 8551
+# Skip Streamlit's first-run email prompt, which would block the launcher script.
+showEmailPrompt = false
+
+[browser]
+gatherUsageStats = false

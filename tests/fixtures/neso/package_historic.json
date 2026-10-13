@@ -1,0 +1,30 @@
+{
+ "success": true,
+ "result": {
+  "name": "historic-demand-data",
+  "title": "Historic Demand Data",
+  "resources": [
+   {
+    "id": "243ca76a-eefe-419d-a4b5-397073deb100",
+    "name": "Frequently Asked Questions (FAQ)",
+    "format": "DOC",
+    "url": "https://api.neso.energy/dataset/8f2fe0af-871c-488d-8bad-960426f24601/resource/243ca76a-eefe-419d-a4b5-397073deb100/download/faq-neso.docx",
+    "last_modified": "2024-10-21T12:04:20.336881"
+   },
+   {
+    "id": "cc505e45-65ae-4819-9b90-1fbb06880293",
+    "name": "Historic Demand Data 2015",
+    "format": "CSV",
+    "url": "https://api.neso.energy/dataset/8f2fe0af-871c-488d-8bad-960426f24601/resource/cc505e45-65ae-4819-9b90-1fbb06880293/download/demanddata_2015.csv",
+    "last_modified": "2023-07-24T12:35:23.084117"
+   },
+   {
+    "id": "8a4a771c-3929-4e56-93ad-cdf13219dea5",
+    "name": "Historic Demand Data 2026",
+    "format": "CSV",
+    "url": "https://api.neso.energy/dataset/8f2fe0af-871c-488d-8bad-960426f24601/resource/8a4a771c-3929-4e56-93ad-cdf13219dea5/download/demanddataupdate_2026.csv",
+    "last_modified": "2026-09-30T08:20:19.602711"
+   }
+  ]
+ }
+}

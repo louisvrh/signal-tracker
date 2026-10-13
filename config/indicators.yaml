@@ -1,0 +1,988 @@
+# Indicator registry (PLAN §4.3). Every indicator is defined here once, before use.
+#
+# Fields: id (<source>_<metric>), source, name, description, unit, frequency (D/W/M/Q),
+# category (trade/industry/energy/market/official/weather),
+# role (alt/official/market/control), higher_is_stronger, default_transform
+# (yoy_28d/yoy_m/yoy_q/level/return_3m), seasonality (weekly/annual/<moving holiday>),
+# publication_lag_days (period end -> public), refetch_window_days, countries
+# (list or `watchlist`), notes. Optional: signal_group (power_demand/power_generation;
+# countries.yaml `exclude_from_signals` keeps a country out of every indicator in that
+# group, PLAN D22); no_data_expected (covered countries with no data by nature, e.g. no
+# nuclear plants: not reported missing, still stored if data appears); calendar (all or
+# weekdays: which periods a series should have) and gap_tolerance (runs of up to this
+# many missing periods are normal, e.g. exchange holidays) and known_gaps (the source's own
+# gaps, never to be filled: {country: [[first, last]]}) for the quality gap check;
+# breaks (known structural breaks, e.g. a reporting change: {country: [{date, reason}]};
+# YoY and robust z-scores never compare values across one, and charts mark it, PLAN D41).
+# retired ({date, reason, replaced_by}): no longer fetched from that date; the stored history
+# stays, and the series is never reported stale or missing (PLAN D56).
+
+indicators:
+  # ------------------------------------------------------------------ FRED
+  - id: fred_indpro
+    source: fred
+    name: US industrial production index
+    description: Federal Reserve G.17 industrial production, total index, seasonally adjusted (FRED INDPRO).
+    unit: index 2017=100
+    frequency: M
+    category: official
+    role: official
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: []
+    publication_lag_days: 17
+    refetch_window_days: 730
+    countries: [USA]
+    notes: Backfilled with ALFRED real-time vintages (vintage_type=source_vintage). Released around the 15th-17th of the following month.
+
+  - id: fred_brent
+    source: fred
+    name: Brent crude oil spot price
+    description: Europe Brent spot price FOB (EIA via FRED DCOILBRENTEU).
+    unit: USD per barrel
+    frequency: D
+    category: market
+    role: market
+    higher_is_stronger: true
+    default_transform: level
+    seasonality: []
+    publication_lag_days: 7
+    refetch_window_days: 60
+    countries: [WLD]
+    calendar: weekdays
+    gap_tolerance: 3   # exchange holidays: up to 3 weekdays in a row (e.g. Christmas at Xetra)
+    notes: Business days only. Used by H5.
+
+  - id: fred_wti
+    source: fred
+    name: WTI crude oil spot price
+    description: Cushing, OK WTI spot price FOB (EIA via FRED DCOILWTICO).
+    unit: USD per barrel
+    frequency: D
+    category: market
+    role: market
+    higher_is_stronger: true
+    default_transform: level
+    seasonality: []
+    publication_lag_days: 7
+    refetch_window_days: 60
+    countries: [WLD]
+    known_gaps: {WLD: [[2015-01-26, 2015-01-29]]}   # FRED has no values (checked 2026-09-27)
+    calendar: weekdays
+    gap_tolerance: 3   # exchange holidays: up to 3 weekdays in a row (e.g. Christmas at Xetra)
+    notes: Business days only.
+
+  - id: fred_copper
+    source: fred
+    name: Global copper price (FRED copy, retired)
+    description: IMF primary commodity price for copper, monthly average (FRED PCOPPUSDM).
+    unit: USD per metric ton
+    frequency: M
+    category: market
+    role: market
+    higher_is_stronger: true
+    default_transform: level
+    seasonality: []
+    publication_lag_days: 20
+    refetch_window_days: 365
+    countries: [WLD]
+    retired:
+      date: 2026-10-07
+      reason: FRED copies the IMF's prices irregularly, sometimes months late; read from the IMF directly
+      replaced_by: imf_copper
+    notes: Monthly average. H4's operational definition uses the daily COMEX future (prices_copper_future) instead. FRED copies the IMF's prices irregularly, sometimes months late; the IMF's own PCPS dataset is current (PLAN D55).
+
+  - id: fred_eu_gas
+    source: fred
+    name: European natural gas price (FRED copy, retired)
+    description: IMF primary commodity price for natural gas, EU, monthly average (FRED PNGASEUUSDM).
+    unit: USD per million BTU
+    frequency: M
+    category: market
+    role: market
+    higher_is_stronger: true
+    default_transform: level
+    seasonality: []
+    publication_lag_days: 20
+    refetch_window_days: 365
+    countries: [WLD]
+    retired:
+      date: 2026-10-07
+      reason: FRED copies the IMF's prices irregularly, sometimes months late; read from the IMF directly
+      replaced_by: imf_eu_gas
+    notes: Monthly average. H6's operational definition uses the daily Dutch TTF future (prices_ttf_gas) instead. FRED copies the IMF's prices irregularly, sometimes months late; the IMF's own PCPS dataset is current (PLAN D55).
+
+  - id: fred_usd_broad
+    source: fred
+    name: Broad US dollar index
+    description: Nominal broad US dollar index, goods and services (Fed H.10 via FRED DTWEXBGS).
+    unit: index Jan 2006=100
+    frequency: D
+    category: market
+    role: market
+    higher_is_stronger: true
+    default_transform: level
+    seasonality: []
+    publication_lag_days: 7
+    refetch_window_days: 60
+    countries: [WLD]
+    calendar: weekdays
+    gap_tolerance: 3   # exchange holidays: up to 3 weekdays in a row (e.g. Christmas at Xetra)
+    notes: Published weekly (Mondays) by the Fed.
+
+  # ------------------------------------------------------------- IMF PortWatch
+  - id: portwatch_portcalls
+    source: portwatch
+    name: Port calls
+    description: Ships entering the country's ports per day (all ship types), summed over ports (IMF PortWatch, AIS-based).
+    unit: ships
+    frequency: D
+    category: trade
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_28d
+    seasonality: [weekly, annual]
+    publication_lag_days: 11
+    refetch_window_days: 60
+    countries: watchlist
+    notes: Dates are UTC. Excludes calls under 5 hours with no draft change. Updated weekly on Tuesdays, covering data to about 4 days earlier.
+
+  - id: portwatch_imports
+    source: portwatch
+    name: Port import volume
+    description: Estimated cargo unloaded in the country's ports per day, from vessel draft changes x deadweight tonnage (IMF PortWatch).
+    unit: metric tons
+    frequency: D
+    category: trade
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_28d
+    seasonality: [weekly, annual]
+    publication_lag_days: 11
+    refetch_window_days: 60
+    countries: watchlist
+    notes: Preliminary model estimates; noisy day to day, use 28-day sums.
+
+  - id: portwatch_exports
+    source: portwatch
+    name: Port export volume
+    description: Estimated cargo loaded in the country's ports per day, from vessel draft changes x deadweight tonnage (IMF PortWatch).
+    unit: metric tons
+    frequency: D
+    category: trade
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_28d
+    seasonality: [weekly, annual]
+    publication_lag_days: 11
+    refetch_window_days: 60
+    countries: watchlist
+    notes: Preliminary model estimates; signal for H1.
+
+  - id: portwatch_transits
+    source: portwatch
+    name: Chokepoint transits
+    description: Ships transiting the chokepoint per day, all types (IMF PortWatch).
+    unit: ships
+    frequency: D
+    category: trade
+    role: alt
+    higher_is_stronger: true
+    default_transform: level
+    seasonality: [weekly]
+    publication_lag_days: 9
+    refetch_window_days: 60
+    countries: [CHK_SUEZ, CHK_PANAMA, CHK_BOSPORUS, CHK_BAB_EL_MANDEB, CHK_MALACCA, CHK_HORMUZ, CHK_CAPE_GOOD_HOPE, CHK_GIBRALTAR, CHK_DOVER, CHK_TAIWAN, CHK_KOREA]
+    notes: A ship is counted once per 48 hours. Signal for H5.
+
+  - id: portwatch_tanker_transits
+    source: portwatch
+    name: Chokepoint tanker transits
+    description: Tankers transiting the chokepoint per day (IMF PortWatch).
+    unit: ships
+    frequency: D
+    category: trade
+    role: alt
+    higher_is_stronger: true
+    default_transform: level
+    seasonality: [weekly]
+    publication_lag_days: 9
+    refetch_window_days: 60
+    countries: [CHK_SUEZ, CHK_PANAMA, CHK_BOSPORUS, CHK_BAB_EL_MANDEB, CHK_MALACCA, CHK_HORMUZ, CHK_CAPE_GOOD_HOPE, CHK_GIBRALTAR, CHK_DOVER, CHK_TAIWAN, CHK_KOREA]
+    notes: Relevant for oil (Hormuz, Bab el-Mandeb, Suez).
+
+  - id: portwatch_transit_volume
+    source: portwatch
+    name: Chokepoint transit volume
+    description: Estimated cargo carried through the chokepoint per day (IMF PortWatch `capacity`).
+    unit: metric tons
+    frequency: D
+    category: trade
+    role: alt
+    higher_is_stronger: true
+    default_transform: level
+    seasonality: [weekly]
+    publication_lag_days: 9
+    refetch_window_days: 60
+    countries: [CHK_SUEZ, CHK_PANAMA, CHK_BOSPORUS, CHK_BAB_EL_MANDEB, CHK_MALACCA, CHK_HORMUZ, CHK_CAPE_GOOD_HOPE, CHK_GIBRALTAR, CHK_DOVER, CHK_TAIWAN, CHK_KOREA]
+    notes: Payload estimate x deadweight tonnage.
+
+  # ------------------------------------------------------------------ Ember
+  # Monthly data covers 22 of the 25 watchlist countries (no IDN, SAU, VNM).
+  - id: ember_demand
+    source: ember
+    name: Electricity demand
+    description: Monthly electricity demand (Ember monthly electricity data).
+    unit: TWh
+    frequency: M
+    category: energy
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: [annual]
+    publication_lag_days: 30
+    refetch_window_days: 730
+    countries: &ember_countries [USA, CAN, MEX, BRA, GBR, DEU, FRA, ITA, ESP, NLD, POL, TUR, IND, CHN, JPN, KOR, TWN, THA, MYS, SGP, AUS, ZAF]
+    signal_group: power_demand
+    notes: Used in the energy category of the composite score (SIGNALS §3). Slower countries get longer lags via sources.yaml. CC-BY-4.0, cite "Monthly electricity data, Ember".
+
+  - id: ember_generation
+    source: ember
+    name: Electricity generation, total
+    description: Monthly total electricity generation (Ember series "Total generation").
+    unit: TWh
+    frequency: M
+    category: energy
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: [annual]
+    publication_lag_days: 30
+    refetch_window_days: 730
+    countries: *ember_countries
+    signal_group: power_generation
+    notes: Differs from demand by net imports.
+
+  - id: ember_gen_coal
+    source: ember
+    name: Electricity generation, coal
+    description: Monthly coal-fired generation (Ember).
+    unit: TWh
+    frequency: M
+    category: energy
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: [annual]
+    publication_lag_days: 30
+    refetch_window_days: 730
+    countries: *ember_countries
+    signal_group: power_generation
+    no_data_expected: [SGP]
+    notes: Fuel-mix detail; not used in composites.
+
+  - id: ember_gen_gas
+    source: ember
+    name: Electricity generation, gas
+    description: Monthly gas-fired generation (Ember).
+    unit: TWh
+    frequency: M
+    category: energy
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: [annual]
+    publication_lag_days: 30
+    refetch_window_days: 730
+    countries: *ember_countries
+    signal_group: power_generation
+    notes: Fuel-mix detail; not used in composites.
+
+  - id: ember_gen_nuclear
+    source: ember
+    name: Electricity generation, nuclear
+    description: Monthly nuclear generation (Ember).
+    unit: TWh
+    frequency: M
+    category: energy
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: [annual]
+    publication_lag_days: 30
+    refetch_window_days: 730
+    countries: *ember_countries
+    signal_group: power_generation
+    no_data_expected: [AUS, ITA, MYS, POL, SGP, THA, TUR]   # TUR: Akkuyu due to start; remove it when data arrives
+    notes: Fuel-mix detail; zero for countries without nuclear.
+
+  - id: ember_gen_hydro
+    source: ember
+    name: Electricity generation, hydro
+    description: Monthly hydro generation (Ember).
+    unit: TWh
+    frequency: M
+    category: energy
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: [annual]
+    publication_lag_days: 30
+    refetch_window_days: 730
+    countries: *ember_countries
+    signal_group: power_generation
+    no_data_expected: [SGP]
+    notes: Fuel-mix detail; not used in composites.
+
+  - id: ember_gen_wind
+    source: ember
+    name: Electricity generation, wind
+    description: Monthly wind generation (Ember).
+    unit: TWh
+    frequency: M
+    category: energy
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: [annual]
+    publication_lag_days: 30
+    refetch_window_days: 730
+    countries: *ember_countries
+    signal_group: power_generation
+    no_data_expected: [MYS, SGP]
+    notes: Fuel-mix detail; not used in composites.
+
+  - id: ember_gen_solar
+    source: ember
+    name: Electricity generation, solar
+    description: Monthly solar generation (Ember).
+    unit: TWh
+    frequency: M
+    category: energy
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: [annual]
+    publication_lag_days: 30
+    refetch_window_days: 730
+    countries: *ember_countries
+    signal_group: power_generation
+    notes: Fuel-mix detail; not used in composites.
+
+  # -------------------------------------------------------------------- EIA
+  - id: eia_us48_load
+    source: eia
+    name: US Lower-48 daily electricity load
+    description: Sum of EIA-930 hourly demand for the Lower 48 over each US Central calendar day.
+    unit: MWh
+    frequency: D
+    category: energy
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_28d
+    seasonality: [weekly, annual]
+    publication_lag_days: 1
+    refetch_window_days: 730
+    countries: [USA]
+    signal_group: power_demand
+    notes: Days with missing hours are not stored and are logged to quality_issues. Weather normalisation happens in S18.
+
+  - id: eia_us48_overnight_load
+    source: eia
+    name: US Lower-48 weekday overnight load
+    description: Mean EIA-930 hourly demand over 00:00-05:00 US Central time, Monday to Friday only.
+    unit: MW
+    frequency: D
+    category: energy
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_28d
+    seasonality: [weekly, annual]
+    publication_lag_days: 1
+    refetch_window_days: 730
+    countries: [USA]
+    calendar: weekdays
+    signal_group: power_demand
+    notes: Robust to rooftop solar (PLAN §5.4). Weekdays only, so weekends are absent by design; a day needs all 5 hours.
+
+  - id: eia_industrial_sales
+    source: eia
+    name: US retail electricity sales to industry
+    description: Monthly retail electricity sales, industrial sector, US total (EIA electricity/retail-sales).
+    unit: million kWh
+    frequency: M
+    category: energy
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: [annual]
+    publication_lag_days: 57
+    refetch_window_days: 730
+    countries: [USA]
+    signal_group: power_demand
+    notes: From the Electric Power Monthly, released near the end of the second month after the reference month.
+
+  # ----------------------------------------------------------------- ENTSO-E
+  - id: entsoe_load
+    source: entsoe
+    name: Daily electricity load (ENTSO-E)
+    description: Actual total load (ENTSO-E Transparency Platform 6.1.A) summed over each local calendar day, country area codes.
+    unit: MWh
+    frequency: D
+    category: energy
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_28d
+    seasonality: [weekly, annual]
+    publication_lag_days: 1
+    refetch_window_days: 60
+    countries: [DEU, FRA, ITA, ESP, NLD, POL]
+    gap_tolerance: 2   # TSOs leave single days incomplete (FRA ~4 a year); the fetcher reports each one
+    signal_group: power_demand
+    breaks:
+      NLD:
+        - {date: 2016-01-01, reason: "TenneT changed how Dutch total load is reported (+17%); not a change in demand"}
+        - {date: 2026-09-10, reason: "Unexplained step down (-26% in the raw feed from 2026-09-09 18:30 UTC), not announced; treated as a reporting change until ENTSO-E revises it (NOTES, 2026-10-07)"}
+    notes: Published within an hour of real time. Days with missing intervals are not stored and are logged to quality_issues (e.g. ESP 2025-04-28 and 29, the Iberian blackout). GBR ended 2021-06 and TUR has no data, so neither is covered. NLD steps up ~17% on 2016-01-01 (a change in TenneT's load definition, not demand).
+
+  - id: entsoe_overnight_load
+    source: entsoe
+    name: Weekday overnight electricity load (ENTSO-E)
+    description: Mean ENTSO-E actual total load over 00:00-05:00 local time, Monday to Friday only.
+    unit: MW
+    frequency: D
+    category: energy
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_28d
+    seasonality: [weekly, annual]
+    publication_lag_days: 1
+    refetch_window_days: 60
+    countries: [DEU, FRA, ITA, ESP, NLD, POL]
+    calendar: weekdays
+    gap_tolerance: 2
+    signal_group: power_demand
+    breaks:
+      NLD:
+        - {date: 2016-01-01, reason: "TenneT changed how Dutch total load is reported (+23% overnight); not a change in demand"}
+        - {date: 2026-09-10, reason: "Unexplained step down (about -13% overnight) with total load's, not announced; treated as a reporting change until ENTSO-E revises it (NOTES, 2026-10-07)"}
+    notes: Robust to rooftop solar (PLAN §5.4, H2b). Weekdays only; a night needs the full five hours.
+
+  # -------------------------------------------------------------------- NESO
+  - id: neso_load
+    source: neso
+    name: Daily electricity demand, Great Britain (NESO)
+    description: National demand plus embedded wind and solar generation (NESO historic demand data), summed over each local calendar day.
+    unit: MWh
+    frequency: D
+    category: energy
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_28d
+    seasonality: [weekly, annual]
+    publication_lag_days: 1
+    refetch_window_days: 365
+    countries: [GBR]
+    gap_tolerance: 2
+    signal_group: power_demand
+    notes: Great Britain only (no Northern Ireland). ND + EMBEDDED_WIND_GENERATION + EMBEDDED_SOLAR_GENERATION, the closest match to ENTSO-E's actual total load; the embedded parts are NESO estimates, corrected months later. Latest days come from the Demand Data Update file (about a day behind).
+
+  - id: neso_overnight_load
+    source: neso
+    name: Weekday overnight electricity demand, Great Britain (NESO)
+    description: Mean of national demand plus embedded wind and solar over 00:00-05:00 local time, Monday to Friday only.
+    unit: MW
+    frequency: D
+    category: energy
+    role: alt
+    higher_is_stronger: true
+    default_transform: yoy_28d
+    seasonality: [weekly, annual]
+    publication_lag_days: 1
+    refetch_window_days: 365
+    countries: [GBR]
+    calendar: weekdays
+    gap_tolerance: 2
+    signal_group: power_demand
+    notes: Robust to rooftop solar (PLAN §5.4, H2b), as entsoe_overnight_load. Weekdays only; a night needs the full five hours.
+
+  # --------------------------------------------------------------- Comtrade
+  # Reported monthly totals for 23 watchlist reporters (VNM has no monthly data;
+  # TWN doesn't report, see the mirror indicators below).
+  - id: comtrade_exports
+    source: comtrade
+    name: Goods exports (official)
+    description: Monthly total goods exports to the world, all HS commodities (UN Comtrade, primaryValue).
+    unit: USD
+    frequency: M
+    category: trade
+    role: official
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: [annual]
+    publication_lag_days: 60
+    refetch_window_days: 730
+    countries: &comtrade_countries [USA, CAN, MEX, BRA, GBR, DEU, FRA, ITA, ESP, NLD, POL, TUR, SAU, IND, CHN, JPN, KOR, THA, MYS, SGP, IDN, AUS, ZAF]
+    known_gaps: &comtrade_gaps   # months Comtrade doesn't have (checked 2026-09-27)
+      SAU: [[2017-10-01, 2017-12-01]]
+      ZAF: [[2020-12-01, 2020-12-01]]
+    notes: Target for H1. Current US dollars. Per-country lags in sources.yaml; China reports in annual batches.
+
+  - id: comtrade_imports
+    source: comtrade
+    name: Goods imports (official)
+    description: Monthly total goods imports from the world, all HS commodities (UN Comtrade, primaryValue).
+    unit: USD
+    frequency: M
+    category: trade
+    role: official
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: [annual]
+    publication_lag_days: 60
+    refetch_window_days: 730
+    countries: *comtrade_countries
+    known_gaps: *comtrade_gaps
+    notes: Imports are usually valued CIF.
+
+  # -------------------------------------------------------------------- IMF
+  - id: imf_exports
+    source: imf
+    name: Goods exports (official, IMF)
+    description: Monthly goods exports to the world, FOB, US dollars (IMF International Trade in Goods, IMTS).
+    unit: USD
+    frequency: M
+    category: trade
+    role: official
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: [annual]
+    publication_lag_days: 122
+    refetch_window_days: 730
+    countries: watchlist
+    no_data_expected: [TWN]
+    notes: Additional official series for H1, far faster than Comtrade for China (PLAN D42). IMF series are "mixed" (reported data plus IMF staff estimates, not flagged per month), so recent months of slow reporters may be estimates. The IMF splits China's combined January-February figures into months.
+
+  - id: imf_imports
+    source: imf
+    name: Goods imports (official, IMF)
+    description: Monthly goods imports from the world, CIF, US dollars (IMF International Trade in Goods, IMTS).
+    unit: USD
+    frequency: M
+    category: trade
+    role: official
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: [annual]
+    publication_lag_days: 122
+    refetch_window_days: 730
+    countries: watchlist
+    no_data_expected: [TWN]
+    notes: CIF for every country (countries reporting FOB imports are converted by the IMF, e.g. CAN and MEX run ~6% above Comtrade). Same caveats as imf_exports.
+
+  - id: imf_copper
+    source: imf
+    name: Global copper price
+    description: IMF primary commodity price for copper (LME, grade A), monthly average (IMF PCPS PCOPP).
+    unit: USD per metric ton
+    frequency: M
+    category: market
+    role: market
+    higher_is_stronger: true
+    default_transform: level
+    seasonality: []
+    publication_lag_days: 10
+    refetch_window_days: 730
+    countries: [WLD]
+    notes: Replaces fred_copper (PLAN D56), same values. The IMF publishes the month's average early the next month (September 2026 was out by 7 October); 10 days allows for later months. H4's operational definition uses the daily COMEX future (prices_copper_future) instead.
+
+  - id: imf_eu_gas
+    source: imf
+    name: European natural gas price
+    description: IMF primary commodity price for natural gas, EU (Netherlands TTF), monthly average (IMF PCPS PNGASEU).
+    unit: USD per million BTU
+    frequency: M
+    category: market
+    role: market
+    higher_is_stronger: true
+    default_transform: level
+    seasonality: []
+    publication_lag_days: 10
+    refetch_window_days: 730
+    countries: [WLD]
+    notes: Replaces fred_eu_gas (PLAN D56), same values. Publication lag as for imf_copper. H6's operational definition uses the daily Dutch TTF future (prices_ttf_gas) instead.
+
+  # -------------------------------------------------------------------- CPB
+  - id: cpb_export_volume
+    source: cpb
+    name: Merchandise export volume (CPB)
+    description: Merchandise export volume, seasonally adjusted, fixed base 2021=100 (CPB World Trade Monitor, series xgz_<area>_qnmi_sn).
+    unit: index 2021=100
+    frequency: M
+    category: trade
+    role: official
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: []
+    publication_lag_days: 57
+    refetch_window_days: 5000
+    countries: [WLD, USA, GBR, JPN, CHN]
+    notes: The volume counterpart of official export values, for the value-versus-volume diagnostics (PLAN D53). Released about 8 weeks after the month; every release revises recent months. Single countries only (regional aggregates aren't stored).
+
+  - id: cpb_export_price
+    source: cpb
+    name: Merchandise export price (CPB, USD unit value)
+    description: Merchandise export prices (unit values) in US dollars, seasonally adjusted, 2021=100 (CPB World Trade Monitor, series xgz_<area>_pdmi_sn). Volume × price = value.
+    unit: index 2021=100
+    frequency: M
+    category: trade
+    role: official
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: []
+    publication_lag_days: 57
+    refetch_window_days: 5000
+    countries: [WLD, USA, GBR, JPN, CHN]
+    notes: Unit values in USD move with commodity prices and the dollar (PLAN D53).
+
+  - id: cpb_import_volume
+    source: cpb
+    name: Merchandise import volume (CPB)
+    description: Merchandise import volume, seasonally adjusted, fixed base 2021=100 (CPB World Trade Monitor, series mgz_<area>_qnmi_sn).
+    unit: index 2021=100
+    frequency: M
+    category: trade
+    role: official
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: []
+    publication_lag_days: 57
+    refetch_window_days: 5000
+    countries: [WLD, USA, GBR, JPN, CHN]
+    notes: As cpb_export_volume, for imports (PLAN D53).
+
+  - id: cpb_import_price
+    source: cpb
+    name: Merchandise import price (CPB, USD unit value)
+    description: Merchandise import prices (unit values) in US dollars, seasonally adjusted, 2021=100 (CPB World Trade Monitor, series mgz_<area>_pdmi_sn).
+    unit: index 2021=100
+    frequency: M
+    category: trade
+    role: official
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: []
+    publication_lag_days: 57
+    refetch_window_days: 5000
+    countries: [WLD, USA, GBR, JPN, CHN]
+    notes: As cpb_export_price, for imports (PLAN D53).
+
+  - id: comtrade_mirror_exports
+    source: comtrade
+    name: Goods exports (MIRROR estimate)
+    description: Sum of all partners' reported imports from "Other Asia, nes" (code 490), used as Taiwan's exports.
+    unit: USD
+    frequency: M
+    category: trade
+    role: official
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: [annual]
+    publication_lag_days: 90
+    refetch_window_days: 730
+    countries: [TWN]
+    notes: FLAGGED MIRROR DATA. Valued CIF by partners, includes some non-Taiwan "Other Asia" trade, and rises as late partners report (revisions). Compare YoY, not levels. See comtrade_mirror_reporters for coverage.
+
+  - id: comtrade_mirror_imports
+    source: comtrade
+    name: Goods imports (MIRROR estimate)
+    description: Sum of all partners' reported exports to "Other Asia, nes" (code 490), used as Taiwan's imports.
+    unit: USD
+    frequency: M
+    category: trade
+    role: official
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: [annual]
+    publication_lag_days: 90
+    refetch_window_days: 730
+    countries: [TWN]
+    notes: FLAGGED MIRROR DATA (see comtrade_mirror_exports).
+
+  - id: comtrade_mirror_reporters
+    source: comtrade
+    name: Mirror coverage (partners reporting)
+    description: Number of partner reporters whose imports from code 490 make up comtrade_mirror_exports that month.
+    unit: reporters
+    frequency: M
+    category: trade
+    role: control
+    higher_is_stronger: true
+    default_transform: level
+    seasonality: []
+    publication_lag_days: 90
+    refetch_window_days: 730
+    countries: [TWN]
+    notes: A low count in recent months means the mirror figures are still incomplete.
+
+  # ------------------------------------------------ Official industrial production
+  - id: eurostat_ip
+    source: eurostat
+    name: Industrial production index (Eurostat)
+    description: Volume of production, industry excluding construction (NACE B-D), seasonally and calendar adjusted, 2021=100 (Eurostat sts_inpr_m).
+    unit: index 2021=100
+    frequency: M
+    category: official
+    role: official
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: []
+    publication_lag_days: 47
+    refetch_window_days: 730
+    countries: [DEU, FRA, ITA, ESP, NLD, POL]
+    notes: Target for H2/E2 in EU countries. Eurostat publishes about 45 days after the month; national offices (e.g. Destatis) are a week or so earlier. No real-time vintages via the API, so history is estimated.
+
+  - id: oecd_ip
+    source: oecd
+    name: Industrial production index (OECD)
+    description: Production volume index, industry excluding construction (BTE), seasonally adjusted, 2015=100 (OECD DF_INDSERV).
+    unit: index 2015=100
+    frequency: M
+    category: official
+    role: official
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: []
+    publication_lag_days: 75
+    refetch_window_days: 730
+    countries: [CAN, MEX, BRA, GBR, TUR, IND, JPN, KOR]
+    notes: OECD republishes national data, so it lags the national release by a few weeks. USA uses fred_indpro (with real vintages) instead.
+
+  - id: oecd_ip_manufacturing
+    source: oecd
+    name: Manufacturing production index (OECD)
+    description: Production volume index, manufacturing (ISIC C), seasonally adjusted, 2015=100 (OECD DF_INDSERV).
+    unit: index 2015=100
+    frequency: M
+    category: official
+    role: official
+    higher_is_stronger: true
+    default_transform: yoy_m
+    seasonality: []
+    publication_lag_days: 200
+    refetch_window_days: 730
+    countries: [IDN, ZAF]
+    notes: Indonesia and South Africa have no total-industry index at the OECD. Latest month on 2026-09-27 was March 2026 for IDN (the 200-day lag) and June 2026 for ZAF (75 days, sources.yaml).
+
+  # ------------------------------------------------------------ Open-Meteo
+  - id: openmeteo_temp_mean
+    source: openmeteo
+    name: Population-weighted mean temperature
+    description: Daily mean 2 m temperature of the country's weather cities (local-time days), weighted by population (Open-Meteo archive, ERA5).
+    unit: degC
+    frequency: D
+    category: weather
+    role: control
+    higher_is_stronger: true
+    default_transform: level
+    seasonality: [annual]
+    publication_lag_days: 1
+    refetch_window_days: 30
+    countries: watchlist
+    notes: Control variable for weather-normalised power demand (S18). The last ~5 days come from a preliminary model and are revised.
+
+  - id: openmeteo_hdd18
+    source: openmeteo
+    name: Heating degree days (base 18 C)
+    description: Population-weighted sum over cities of max(0, 18 - daily mean temperature).
+    unit: degC days
+    frequency: D
+    category: weather
+    role: control
+    higher_is_stronger: true
+    default_transform: level
+    seasonality: [annual]
+    publication_lag_days: 1
+    refetch_window_days: 30
+    countries: watchlist
+    notes: Computed per city, then weighted.
+
+  - id: openmeteo_cdd22
+    source: openmeteo
+    name: Cooling degree days (base 22 C)
+    description: Population-weighted sum over cities of max(0, daily mean temperature - 22).
+    unit: degC days
+    frequency: D
+    category: weather
+    role: control
+    higher_is_stronger: true
+    default_transform: level
+    seasonality: [annual]
+    publication_lag_days: 1
+    refetch_window_days: 30
+    countries: watchlist
+    notes: Computed per city, then weighted.
+
+  # ------------------------------------------------------------------ Prices
+  # Daily adjusted closes (yfinance, Stooq fallback); available_at = trade date 22:00 UTC.
+  - id: prices_country_etf
+    source: prices
+    name: Country ETF adjusted close
+    description: Dividend- and split-adjusted close of the country's US-listed ETF (countries.yaml country_etf).
+    unit: USD
+    frequency: D
+    category: market
+    role: market
+    higher_is_stronger: true
+    default_transform: return_3m
+    seasonality: []
+    publication_lag_days: 1
+    refetch_window_days: 5000
+    countries: watchlist
+    calendar: weekdays
+    gap_tolerance: 3   # exchange holidays: up to 3 weekdays in a row (e.g. Christmas at Xetra)
+    notes: Used for D_mkt against the benchmark (SIGNALS §4). Whole history is re-based after each dividend, which the store records as revisions. US-listed ETFs may not be buyable for UK/EU retail investors (PLAN §5.7).
+
+  - id: prices_fx
+    source: prices
+    name: FX rate, local currency per USD
+    description: Daily close of USD<CCY> (units of local currency per US dollar; higher = weaker local currency).
+    unit: local currency per USD
+    frequency: D
+    category: market
+    role: market
+    higher_is_stronger: false
+    default_transform: return_3m
+    seasonality: []
+    publication_lag_days: 1
+    refetch_window_days: 5000
+    countries: [CAN, MEX, BRA, GBR, DEU, FRA, ITA, ESP, NLD, POL, TUR, SAU, IND, CHN, JPN, KOR, TWN, VNM, THA, MYS, SGP, IDN, AUS, ZAF]
+    calendar: weekdays
+    gap_tolerance: 3   # exchange holidays: up to 3 weekdays in a row (e.g. Christmas at Xetra)
+    notes: One download per currency; euro-area countries share USDEUR.
+
+  - id: prices_benchmark
+    source: prices
+    name: Global equity benchmark (URTH)
+    description: iShares MSCI World ETF adjusted close.
+    unit: USD
+    frequency: D
+    category: market
+    role: market
+    higher_is_stronger: true
+    default_transform: return_3m
+    seasonality: []
+    publication_lag_days: 1
+    refetch_window_days: 5000
+    countries: [WLD]
+    calendar: weekdays
+    gap_tolerance: 3   # exchange holidays: up to 3 weekdays in a row (e.g. Christmas at Xetra)
+    notes: Benchmark for D_mkt and H3.
+
+  - id: prices_copper_miners
+    source: prices
+    name: Copper miners ETF (COPX)
+    description: Global X Copper Miners ETF adjusted close.
+    unit: USD
+    frequency: D
+    category: market
+    role: market
+    higher_is_stronger: true
+    default_transform: return_3m
+    seasonality: []
+    publication_lag_days: 1
+    refetch_window_days: 5000
+    countries: [WLD]
+    calendar: weekdays
+    gap_tolerance: 3   # exchange holidays: up to 3 weekdays in a row (e.g. Christmas at Xetra)
+    notes: H4.
+
+  - id: prices_copper_future
+    source: prices
+    name: COMEX copper, front month (HG=F)
+    description: Yahoo continuous front-month COMEX copper future.
+    unit: USD per lb
+    frequency: D
+    category: market
+    role: market
+    higher_is_stronger: true
+    default_transform: return_3m
+    seasonality: []
+    publication_lag_days: 1
+    refetch_window_days: 5000
+    countries: [WLD]
+    calendar: weekdays
+    gap_tolerance: 3   # exchange holidays: up to 3 weekdays in a row (e.g. Christmas at Xetra)
+    notes: H4. Continuous front-month series jump at contract rolls.
+
+  - id: prices_freight
+    source: prices
+    name: Dry bulk freight ETF (BDRY)
+    description: Breakwave Dry Bulk Shipping ETF adjusted close (holds freight futures).
+    unit: USD
+    frequency: D
+    category: market
+    role: market
+    higher_is_stronger: true
+    default_transform: return_3m
+    seasonality: []
+    publication_lag_days: 1
+    refetch_window_days: 5000
+    countries: [WLD]
+    calendar: weekdays
+    gap_tolerance: 3   # exchange holidays: up to 3 weekdays in a row (e.g. Christmas at Xetra)
+    notes: H5. Listed since 2018.
+
+  - id: prices_brent_future
+    source: prices
+    name: ICE Brent, front month (BZ=F)
+    description: Yahoo continuous front-month Brent crude future.
+    unit: USD per barrel
+    frequency: D
+    category: market
+    role: market
+    higher_is_stronger: true
+    default_transform: return_3m
+    seasonality: []
+    publication_lag_days: 1
+    refetch_window_days: 5000
+    countries: [WLD]
+    calendar: weekdays
+    gap_tolerance: 3   # exchange holidays: up to 3 weekdays in a row (e.g. Christmas at Xetra)
+    notes: H5. Daily alternative to fred_brent (EIA spot, published with a lag).
+
+  - id: prices_ttf_gas
+    source: prices
+    name: Dutch TTF natural gas, front month (TTF=F)
+    description: Yahoo continuous front-month TTF gas future.
+    unit: EUR per MWh
+    frequency: D
+    category: market
+    role: market
+    higher_is_stronger: true
+    default_transform: return_3m
+    seasonality: []
+    publication_lag_days: 1
+    refetch_window_days: 5000
+    countries: [WLD]
+    calendar: weekdays
+    gap_tolerance: 3   # exchange holidays: up to 3 weekdays in a row (e.g. Christmas at Xetra)
+    notes: H6 gas price spike input (daily; fred_eu_gas is the monthly average). Yahoo history for TTF=F starts later than 2015.
+
+  - id: prices_eu_chemicals
+    source: prices
+    name: European chemicals equities (EXV7.DE)
+    description: iShares STOXX Europe 600 Chemicals UCITS ETF (DE), Xetra, adjusted close.
+    unit: EUR
+    frequency: D
+    category: market
+    role: market
+    higher_is_stronger: true
+    default_transform: return_3m
+    seasonality: []
+    publication_lag_days: 1
+    refetch_window_days: 5000
+    countries: [WLD]
+    calendar: weekdays
+    gap_tolerance: 3   # exchange holidays: up to 3 weekdays in a row (e.g. Christmas at Xetra)
+    notes: H6 target (PLAN D20). Chosen over Amundi/Lyxor CHM.PA, whose Yahoo prices looked stale.

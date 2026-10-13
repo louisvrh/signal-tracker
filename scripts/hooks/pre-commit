@@ -1,0 +1,28 @@
+#!/bin/sh
+# Pre-commit hook: run the test suite with the project's venv Python and
+# block the commit if any test fails.
+#
+# Enable once per clone (repo-local setting):
+#   git config core.hooksPath scripts/hooks
+# Git for Windows runs this with its bundled sh, so it works from PowerShell,
+# cmd and Git Bash alike.
+
+root="$(git rev-parse --show-toplevel)" || exit 1
+cd "$root" || exit 1
+
+if [ -f ".venv/Scripts/python.exe" ]; then
+    py=".venv/Scripts/python.exe"      # Windows venv
+elif [ -f ".venv/bin/python" ]; then
+    py=".venv/bin/python"              # macOS/Linux venv
+else
+    echo "pre-commit: no virtual environment at .venv (see docs/SETUP.md). Commit blocked." >&2
+    exit 1
+fi
+
+echo "pre-commit: running tests..."
+if "$py" -m pytest -q -p no:cacheprovider; then
+    echo "pre-commit: all tests passed."
+    exit 0
+fi
+echo "pre-commit: tests failed, commit blocked. Fix the failures and commit again." >&2
+exit 1

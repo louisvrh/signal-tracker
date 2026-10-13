@@ -1,0 +1,421 @@
+# Country reference (PLAN §4.4). The watchlist is every country listed here.
+#
+# Fields
+#   iso3, name        ISO 3166-1 alpha-3 code and English name
+#   un_m49            UN M49 numeric code
+#   comtrade_code     Comtrade reporter code, only where it differs from un_m49
+#                     (checked against Comtrade's reporter reference on 2026-09-27)
+#   entsoe_code       entsoe-py area code, European countries only
+#   timezone          IANA zone used for local-time day boundaries (e.g. overnight load)
+#   weather_cities    3-5 largest cities; weight = share of approximate metropolitan
+#                     population among the listed cities (sums to 1)
+#   country_etf       US-listed country ETF (tradability caveats: PLAN §5.7)
+#   fx_pair           USD<CCY>: units of local currency per US dollar (null for USA)
+#   holiday_calendar  country code in the `holidays` package
+#   moving_holidays   any of lunar_new_year, ramadan_eid, easter, diwali, golden_week (PLAN §5.2)
+#   exclude_from_signals  signal groups whose indicators this country's signals must not
+#                     use (the data is still fetched and stored); currently only
+#                     power_demand and power_generation (PLAN D22). Optional, default none.
+#
+# Values were filled in from general knowledge on 2026-09-27; lines marked `# verify`
+# are the least certain. Population weights are approximate throughout.
+# City coordinates were checked against the Open-Meteo geocoding API on 2026-09-27:
+# all are within 10 km of the geocoded city (most within 2 km).
+
+countries:
+  - iso3: USA
+    name: United States
+    un_m49: 840
+    comtrade_code: 842
+    timezone: America/Chicago        # US Central, used for Lower-48 day boundaries (S9)
+    weather_cities:
+      - {name: New York, lat: 40.71, lon: -74.01, weight: 0.34}
+      - {name: Los Angeles, lat: 34.05, lon: -118.24, weight: 0.22}
+      - {name: Chicago, lat: 41.88, lon: -87.63, weight: 0.16}
+      - {name: Dallas, lat: 32.78, lon: -96.80, weight: 0.15}
+      - {name: Houston, lat: 29.76, lon: -95.37, weight: 0.13}
+    country_etf: SPY
+    fx_pair: null
+    holiday_calendar: US
+    moving_holidays: []
+
+  - iso3: CAN
+    name: Canada
+    un_m49: 124
+    timezone: America/Toronto
+    weather_cities:
+      - {name: Toronto, lat: 43.65, lon: -79.38, weight: 0.39}
+      - {name: Montreal, lat: 45.50, lon: -73.57, weight: 0.26}
+      - {name: Vancouver, lat: 49.28, lon: -123.12, weight: 0.16}
+      - {name: Calgary, lat: 51.05, lon: -114.07, weight: 0.10}
+      - {name: Edmonton, lat: 53.55, lon: -113.49, weight: 0.09}
+    country_etf: EWC
+    fx_pair: USDCAD
+    holiday_calendar: CA
+    moving_holidays: [easter]
+
+  - iso3: MEX
+    name: Mexico
+    un_m49: 484
+    timezone: America/Mexico_City
+    weather_cities:
+      - {name: Mexico City, lat: 19.43, lon: -99.13, weight: 0.61}
+      - {name: Monterrey, lat: 25.69, lon: -100.32, weight: 0.15}
+      - {name: Guadalajara, lat: 20.66, lon: -103.35, weight: 0.15}
+      - {name: Puebla, lat: 19.04, lon: -98.21, weight: 0.09}
+    country_etf: EWW
+    fx_pair: USDMXN
+    holiday_calendar: MX
+    moving_holidays: [easter]
+
+  - iso3: BRA
+    name: Brazil
+    un_m49: 76
+    timezone: America/Sao_Paulo
+    weather_cities:
+      - {name: Sao Paulo, lat: -23.55, lon: -46.63, weight: 0.44}
+      - {name: Rio de Janeiro, lat: -22.91, lon: -43.17, weight: 0.27}
+      - {name: Belo Horizonte, lat: -19.92, lon: -43.94, weight: 0.12}
+      - {name: Brasilia, lat: -15.79, lon: -47.88, weight: 0.09}
+      - {name: Porto Alegre, lat: -30.03, lon: -51.23, weight: 0.08}
+    country_etf: EWZ
+    fx_pair: USDBRL
+    holiday_calendar: BR
+    moving_holidays: [easter]
+
+  - iso3: GBR
+    name: United Kingdom
+    un_m49: 826
+    entsoe_code: GB                  # load data ends 2021-06-14 (after Brexit; checked 2026-09-29), so not fetched; GB demand comes from NESO (PLAN D40)
+    timezone: Europe/London
+    weather_cities:
+      - {name: London, lat: 51.51, lon: -0.13, weight: 0.61}
+      - {name: Manchester, lat: 53.48, lon: -2.24, weight: 0.12}
+      - {name: Birmingham, lat: 52.49, lon: -1.89, weight: 0.12}
+      - {name: Leeds, lat: 53.80, lon: -1.55, weight: 0.08}
+      - {name: Glasgow, lat: 55.86, lon: -4.25, weight: 0.07}
+    country_etf: EWU
+    fx_pair: USDGBP
+    holiday_calendar: GB
+    moving_holidays: [easter]
+
+  - iso3: DEU
+    name: Germany
+    un_m49: 276
+    entsoe_code: DE                  # the country, from 2015; the DE_LU zone adds Luxembourg (S8)
+    timezone: Europe/Berlin
+    weather_cities:
+      - {name: Essen (Rhine-Ruhr), lat: 51.46, lon: 7.01, weight: 0.30}   # verify weight
+      - {name: Berlin, lat: 52.52, lon: 13.40, weight: 0.19}
+      - {name: Munich, lat: 48.14, lon: 11.58, weight: 0.18}
+      - {name: Frankfurt (Rhine-Main), lat: 50.11, lon: 8.68, weight: 0.17}
+      - {name: Hamburg, lat: 53.55, lon: 9.99, weight: 0.16}
+    country_etf: EWG
+    fx_pair: USDEUR
+    holiday_calendar: DE
+    moving_holidays: [easter]
+
+  - iso3: FRA
+    name: France
+    un_m49: 250
+    comtrade_code: 251
+    entsoe_code: FR
+    timezone: Europe/Paris
+    weather_cities:
+      - {name: Paris, lat: 48.86, lon: 2.35, weight: 0.62}
+      - {name: Lyon, lat: 45.76, lon: 4.84, weight: 0.12}
+      - {name: Marseille, lat: 43.30, lon: 5.37, weight: 0.10}
+      - {name: Toulouse, lat: 43.60, lon: 1.44, weight: 0.08}
+      - {name: Lille, lat: 50.63, lon: 3.06, weight: 0.08}
+    country_etf: EWQ
+    fx_pair: USDEUR
+    holiday_calendar: FR
+    moving_holidays: [easter]
+
+  - iso3: ITA
+    name: Italy
+    un_m49: 380
+    entsoe_code: IT
+    timezone: Europe/Rome
+    weather_cities:
+      - {name: Milan, lat: 45.46, lon: 9.19, weight: 0.29}
+      - {name: Rome, lat: 41.90, lon: 12.50, weight: 0.28}
+      - {name: Naples, lat: 40.85, lon: 14.27, weight: 0.20}
+      - {name: Turin, lat: 45.07, lon: 7.69, weight: 0.15}
+      - {name: Palermo, lat: 38.12, lon: 13.36, weight: 0.08}
+    country_etf: EWI
+    fx_pair: USDEUR
+    holiday_calendar: IT
+    moving_holidays: [easter]
+
+  - iso3: ESP
+    name: Spain
+    un_m49: 724
+    entsoe_code: ES
+    timezone: Europe/Madrid
+    weather_cities:
+      - {name: Madrid, lat: 40.42, lon: -3.70, weight: 0.41}
+      - {name: Barcelona, lat: 41.39, lon: 2.17, weight: 0.33}
+      - {name: Valencia, lat: 39.47, lon: -0.38, weight: 0.11}
+      - {name: Seville, lat: 37.39, lon: -5.98, weight: 0.09}
+      - {name: Bilbao, lat: 43.26, lon: -2.93, weight: 0.06}
+    country_etf: EWP
+    fx_pair: USDEUR
+    holiday_calendar: ES
+    moving_holidays: [easter]
+
+  - iso3: NLD
+    name: Netherlands
+    un_m49: 528
+    entsoe_code: NL
+    timezone: Europe/Amsterdam
+    weather_cities:
+      - {name: Amsterdam, lat: 52.37, lon: 4.90, weight: 0.36}
+      - {name: Rotterdam, lat: 51.92, lon: 4.48, weight: 0.25}
+      - {name: The Hague, lat: 52.08, lon: 4.30, weight: 0.15}
+      - {name: Utrecht, lat: 52.09, lon: 5.12, weight: 0.13}
+      - {name: Eindhoven, lat: 51.44, lon: 5.47, weight: 0.11}
+    country_etf: EWN
+    fx_pair: USDEUR
+    holiday_calendar: NL
+    moving_holidays: [easter]
+
+  - iso3: POL
+    name: Poland
+    un_m49: 616
+    entsoe_code: PL
+    timezone: Europe/Warsaw
+    weather_cities:
+      - {name: Warsaw, lat: 52.23, lon: 21.01, weight: 0.34}
+      - {name: Katowice (Upper Silesia), lat: 50.26, lon: 19.02, weight: 0.24}   # verify weight
+      - {name: Krakow, lat: 50.06, lon: 19.94, weight: 0.17}
+      - {name: Wroclaw, lat: 51.11, lon: 17.04, weight: 0.13}
+      - {name: Lodz, lat: 51.76, lon: 19.46, weight: 0.12}
+    country_etf: EPOL
+    fx_pair: USDPLN
+    holiday_calendar: PL
+    moving_holidays: [easter]
+
+  - iso3: TUR
+    name: Turkey
+    un_m49: 792
+    entsoe_code: TR                  # no actual load on the platform (checked 2026-09-29), so not fetched
+    timezone: Europe/Istanbul
+    weather_cities:
+      - {name: Istanbul, lat: 41.01, lon: 28.98, weight: 0.50}
+      - {name: Ankara, lat: 39.93, lon: 32.86, weight: 0.18}
+      - {name: Izmir, lat: 38.42, lon: 27.14, weight: 0.14}
+      - {name: Bursa, lat: 40.19, lon: 29.06, weight: 0.10}
+      - {name: Antalya, lat: 36.90, lon: 30.70, weight: 0.08}
+    country_etf: TUR
+    fx_pair: USDTRY
+    holiday_calendar: TR
+    moving_holidays: [ramadan_eid]
+
+  - iso3: SAU
+    name: Saudi Arabia
+    un_m49: 682
+    timezone: Asia/Riyadh
+    weather_cities:
+      - {name: Riyadh, lat: 24.71, lon: 46.68, weight: 0.44}
+      - {name: Jeddah, lat: 21.49, lon: 39.19, weight: 0.27}
+      - {name: Mecca, lat: 21.39, lon: 39.86, weight: 0.13}
+      - {name: Medina, lat: 24.47, lon: 39.61, weight: 0.09}
+      - {name: Dammam, lat: 26.43, lon: 50.10, weight: 0.07}
+    country_etf: KSA
+    fx_pair: USDSAR
+    holiday_calendar: SA
+    moving_holidays: [ramadan_eid]
+
+  - iso3: IND
+    name: India
+    un_m49: 356
+    comtrade_code: 699
+    timezone: Asia/Kolkata
+    weather_cities:
+      - {name: Delhi, lat: 28.61, lon: 77.21, weight: 0.35}
+      - {name: Mumbai, lat: 19.08, lon: 72.88, weight: 0.23}
+      - {name: Kolkata, lat: 22.57, lon: 88.36, weight: 0.16}
+      - {name: Bengaluru, lat: 12.97, lon: 77.59, weight: 0.14}
+      - {name: Chennai, lat: 13.08, lon: 80.27, weight: 0.12}
+    country_etf: INDA
+    fx_pair: USDINR
+    holiday_calendar: IN
+    moving_holidays: [diwali]
+
+  - iso3: CHN
+    name: China
+    un_m49: 156
+    timezone: Asia/Shanghai
+    weather_cities:
+      - {name: Shanghai, lat: 31.23, lon: 121.47, weight: 0.30}
+      - {name: Beijing, lat: 39.90, lon: 116.41, weight: 0.23}
+      - {name: Chongqing, lat: 29.56, lon: 106.55, weight: 0.18}
+      - {name: Guangzhou, lat: 23.13, lon: 113.26, weight: 0.15}
+      - {name: Shenzhen, lat: 22.54, lon: 114.06, weight: 0.14}
+    country_etf: MCHI
+    fx_pair: USDCNY
+    holiday_calendar: CN
+    moving_holidays: [lunar_new_year, golden_week]
+
+  - iso3: JPN
+    name: Japan
+    un_m49: 392
+    timezone: Asia/Tokyo
+    weather_cities:
+      - {name: Tokyo, lat: 35.68, lon: 139.69, weight: 0.50}
+      - {name: Osaka, lat: 34.69, lon: 135.50, weight: 0.26}
+      - {name: Nagoya, lat: 35.18, lon: 136.91, weight: 0.13}
+      - {name: Fukuoka, lat: 33.59, lon: 130.40, weight: 0.07}
+      - {name: Sapporo, lat: 43.06, lon: 141.35, weight: 0.04}
+    country_etf: EWJ
+    fx_pair: USDJPY
+    holiday_calendar: JP
+    moving_holidays: [golden_week]
+
+  - iso3: KOR
+    name: South Korea
+    un_m49: 410
+    timezone: Asia/Seoul
+    weather_cities:
+      - {name: Seoul, lat: 37.57, lon: 126.98, weight: 0.75}
+      - {name: Busan, lat: 35.18, lon: 129.08, weight: 0.10}
+      - {name: Daegu, lat: 35.87, lon: 128.60, weight: 0.07}
+      - {name: Daejeon, lat: 36.35, lon: 127.38, weight: 0.04}
+      - {name: Gwangju, lat: 35.16, lon: 126.85, weight: 0.04}
+    country_etf: EWY
+    fx_pair: USDKRW
+    holiday_calendar: KR
+    moving_holidays: [lunar_new_year]
+
+  - iso3: TWN
+    name: Taiwan
+    un_m49: 158                      # ISO 3166 numeric stand-in: UN M49 has no entry for Taiwan (checked 2026-09-27). Taiwan does not report to Comtrade; S10 builds mirror data from partner code 490 "Other Asia, nes"
+    timezone: Asia/Taipei
+    weather_cities:
+      - {name: Taipei, lat: 25.03, lon: 121.57, weight: 0.42}
+      - {name: Taichung, lat: 24.15, lon: 120.67, weight: 0.17}
+      - {name: Kaohsiung, lat: 22.63, lon: 120.30, weight: 0.16}
+      - {name: Taoyuan, lat: 24.99, lon: 121.30, weight: 0.14}
+      - {name: Tainan, lat: 22.99, lon: 120.21, weight: 0.11}
+    country_etf: EWT
+    fx_pair: USDTWD
+    holiday_calendar: TW
+    moving_holidays: [lunar_new_year]
+
+  - iso3: VNM
+    name: Vietnam
+    un_m49: 704
+    timezone: Asia/Ho_Chi_Minh
+    weather_cities:
+      - {name: Ho Chi Minh City, lat: 10.82, lon: 106.63, weight: 0.42}
+      - {name: Hanoi, lat: 21.03, lon: 105.85, weight: 0.38}
+      - {name: Haiphong, lat: 20.84, lon: 106.69, weight: 0.09}
+      - {name: Can Tho, lat: 10.03, lon: 105.79, weight: 0.06}
+      - {name: Da Nang, lat: 16.05, lon: 108.21, weight: 0.05}
+    country_etf: VNM
+    fx_pair: USDVND
+    holiday_calendar: VN
+    moving_holidays: [lunar_new_year]
+
+  - iso3: THA
+    name: Thailand
+    un_m49: 764
+    timezone: Asia/Bangkok
+    weather_cities:
+      - {name: Bangkok, lat: 13.76, lon: 100.50, weight: 0.76}
+      - {name: Chonburi (Eastern Seaboard), lat: 13.36, lon: 100.98, weight: 0.11}   # verify weight
+      - {name: Chiang Mai, lat: 18.79, lon: 98.98, weight: 0.08}
+      - {name: Nakhon Ratchasima, lat: 14.97, lon: 102.10, weight: 0.05}
+    country_etf: THD
+    fx_pair: USDTHB
+    holiday_calendar: TH
+    moving_holidays: []
+
+  - iso3: MYS
+    name: Malaysia
+    un_m49: 458
+    timezone: Asia/Kuala_Lumpur
+    weather_cities:
+      - {name: Kuala Lumpur, lat: 3.14, lon: 101.69, weight: 0.61}
+      - {name: George Town (Penang), lat: 5.41, lon: 100.33, weight: 0.20}
+      - {name: Johor Bahru, lat: 1.49, lon: 103.74, weight: 0.13}
+      - {name: Ipoh, lat: 4.60, lon: 101.08, weight: 0.06}
+    country_etf: EWM
+    fx_pair: USDMYR
+    holiday_calendar: MY
+    moving_holidays: [lunar_new_year, ramadan_eid]
+
+  - iso3: SGP
+    name: Singapore
+    un_m49: 702
+    timezone: Asia/Singapore
+    weather_cities:
+      - {name: Singapore, lat: 1.35, lon: 103.82, weight: 1.0}   # city-state: one point
+    country_etf: EWS
+    fx_pair: USDSGD
+    holiday_calendar: SG
+    moving_holidays: [lunar_new_year]
+
+  - iso3: IDN
+    name: Indonesia
+    un_m49: 360
+    timezone: Asia/Jakarta
+    weather_cities:
+      - {name: Jakarta, lat: -6.21, lon: 106.85, weight: 0.57}
+      - {name: Surabaya, lat: -7.25, lon: 112.75, weight: 0.16}
+      - {name: Bandung, lat: -6.91, lon: 107.61, weight: 0.14}
+      - {name: Medan, lat: 3.60, lon: 98.67, weight: 0.08}
+      - {name: Semarang, lat: -6.97, lon: 110.42, weight: 0.05}
+    country_etf: EIDO
+    fx_pair: USDIDR
+    holiday_calendar: ID
+    moving_holidays: [lunar_new_year, ramadan_eid]
+
+  - iso3: AUS
+    name: Australia
+    un_m49: 36
+    timezone: Australia/Sydney
+    weather_cities:
+      - {name: Sydney, lat: -33.87, lon: 151.21, weight: 0.32}
+      - {name: Melbourne, lat: -37.81, lon: 144.96, weight: 0.31}
+      - {name: Brisbane, lat: -27.47, lon: 153.03, weight: 0.16}
+      - {name: Perth, lat: -31.95, lon: 115.86, weight: 0.13}
+      - {name: Adelaide, lat: -34.93, lon: 138.60, weight: 0.08}
+    country_etf: EWA
+    fx_pair: USDAUD
+    holiday_calendar: AU
+    moving_holidays: [easter]
+
+  - iso3: ZAF
+    name: South Africa
+    un_m49: 710                      # also its Comtrade reporter code (checked 2026-09-27)
+    timezone: Africa/Johannesburg
+    # Weights: 2022 census populations of the metropolitan municipalities.
+    weather_cities:
+      - {name: Johannesburg (incl. Ekurhuleni), lat: -26.20, lon: 28.05, weight: 0.38}
+      - {name: Cape Town, lat: -33.92, lon: 18.42, weight: 0.21}
+      - {name: Durban, lat: -29.86, lon: 31.03, weight: 0.18}
+      - {name: Pretoria, lat: -25.75, lon: 28.19, weight: 0.18}
+      - {name: Gqeberha (Port Elizabeth), lat: -33.96, lon: 25.60, weight: 0.05}
+    country_etf: EZA
+    fx_pair: USDZAR
+    holiday_calendar: ZA
+    moving_holidays: [easter]
+    # Load-shedding: power demand and generation reflect supply limits, not activity (PLAN D22).
+    exclude_from_signals: [power_demand, power_generation]
+
+# Shipping chokepoints (country code CHK_<NAME>). portwatch_id is the `portid`
+# in IMF PortWatch's Daily_Chokepoints_Data layer (checked 2026-09-27).
+chokepoints:
+  - {code: CHK_SUEZ, name: Suez Canal, portwatch_id: chokepoint1}
+  - {code: CHK_PANAMA, name: Panama Canal, portwatch_id: chokepoint2}
+  - {code: CHK_BOSPORUS, name: Bosporus Strait, portwatch_id: chokepoint3}
+  - {code: CHK_BAB_EL_MANDEB, name: Bab el-Mandeb Strait, portwatch_id: chokepoint4}
+  - {code: CHK_MALACCA, name: Malacca Strait, portwatch_id: chokepoint5}
+  - {code: CHK_HORMUZ, name: Strait of Hormuz, portwatch_id: chokepoint6}
+  - {code: CHK_CAPE_GOOD_HOPE, name: Cape of Good Hope, portwatch_id: chokepoint7}
+  - {code: CHK_GIBRALTAR, name: Gibraltar Strait, portwatch_id: chokepoint8}
+  - {code: CHK_DOVER, name: Dover Strait, portwatch_id: chokepoint9}
+  - {code: CHK_TAIWAN, name: Taiwan Strait, portwatch_id: chokepoint11}
+  - {code: CHK_KOREA, name: Korea Strait, portwatch_id: chokepoint12}

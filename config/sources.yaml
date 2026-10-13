@@ -1,0 +1,262 @@
+# Which sources are enabled, plus source-specific settings.
+# Secrets are referenced by the name of their .env variable, never by value.
+# Every `indicator:` referenced here must be defined in indicators.yaml.
+
+defaults:
+  backfill_start: "2015-01-01"
+
+sources:
+  fred:
+    enabled: true
+    key_env: FRED_API_KEY
+    refetch_window_days: 730
+    # vintages: true  -> ALFRED real-time vintages (official data)
+    # vintages: false -> market data; available_at from the registry's publication lag
+    series:
+      - {series_id: INDPRO, indicator: fred_indpro, country: USA, vintages: true}
+      - {series_id: DCOILBRENTEU, indicator: fred_brent, country: WLD, vintages: false}
+      - {series_id: DCOILWTICO, indicator: fred_wti, country: WLD, vintages: false}
+      # Retired 2026-10-07 (indicators.yaml `retired`, PLAN D56): no longer fetched, history kept.
+      # Read from the IMF directly instead (imf: commodity_prices).
+      - {series_id: PCOPPUSDM, indicator: fred_copper, country: WLD, vintages: false}
+      - {series_id: PNGASEUUSDM, indicator: fred_eu_gas, country: WLD, vintages: false}
+      - {series_id: DTWEXBGS, indicator: fred_usd_broad, country: WLD, vintages: false}
+
+  portwatch:
+    enabled: true
+    # IMF PortWatch ArcGIS feature services (no key). Updated weekly on Tuesdays.
+    base_url: https://services9.arcgis.com/weJ1QsnbMYJlCHdG/ArcGIS/rest/services
+    backfill_start: "2019-01-01"   # first date in both layers
+    refetch_window_days: 60
+    ports:
+      layer: Daily_Ports_Data
+      # PortWatch field summed over all ports of a country -> indicator
+      fields:
+        - {field: portcalls, indicator: portwatch_portcalls}
+        - {field: import, indicator: portwatch_imports}
+        - {field: export, indicator: portwatch_exports}
+    chokepoints:
+      layer: Daily_Chokepoints_Data
+      fields:
+        - {field: n_total, indicator: portwatch_transits}
+        - {field: n_tanker, indicator: portwatch_tanker_transits}
+        - {field: capacity, indicator: portwatch_transit_volume}
+
+  ember:
+    enabled: true
+    key_env: EMBER_API_KEY
+    base_url: https://api.ember-energy.org/v1
+    refetch_window_days: 730   # monthly estimates are revised as official data arrive
+    demand: {indicator: ember_demand}
+    generation:                # Ember series name -> indicator
+      - {series: Total generation, indicator: ember_generation}
+      - {series: Coal, indicator: ember_gen_coal}
+      - {series: Gas, indicator: ember_gen_gas}
+      - {series: Nuclear, indicator: ember_gen_nuclear}
+      - {series: Hydro, indicator: ember_gen_hydro}
+      - {series: Wind, indicator: ember_gen_wind}
+      - {series: Solar, indicator: ember_gen_solar}
+    # Countries publish at different speeds (latest month on 2026-09-27: Aug for
+    # EU/USA/CHN/AUS/TUR, Jul for most others incl. ZAF, Jun for CAN, May for MYS/SGP/THA).
+    # Countries not listed use the indicator's publication_lag_days (30).
+    publication_lag_days_by_country:
+      {BRA: 60, GBR: 60, IND: 60, JPN: 60, KOR: 60, MEX: 60, TWN: 60, ZAF: 60, CAN: 90, MYS: 120, SGP: 120, THA: 120}
+
+  eia:
+    enabled: true
+    key_env: EIA_API_KEY
+    base_url: https://api.eia.gov/v2
+    backfill_start: "2019-01-01"   # first hour in API v2's EIA-930 route
+    refetch_window_days: 730       # retail sales are revised when annual data are final
+    hourly_demand:                 # EIA-930 hourly demand -> daily indicators
+      respondent: US48
+      country: USA
+      timezone: America/Chicago    # one time zone for the whole Lower 48 (simplification)
+      daily_indicator: eia_us48_load
+      overnight_indicator: eia_us48_overnight_load
+    monthly_sales:
+      - {state: US, sector: IND, country: USA, indicator: eia_industrial_sales}
+
+  entsoe:
+    enabled: true
+    key_env: ENTSOE_API_TOKEN
+    # ENTSO-E Transparency Platform, Actual Total Load [6.1.A] (A65/A16), via entsoe-py.
+    # At most 1 year per request; 400 requests/minute per IP and token (10-minute ban
+    # beyond that), so the fetcher waits 1 s between requests. Countries: the
+    # indicators' country lists. Not fetched: GBR (GB data ends 2021-06-14, after
+    # Brexit) and TUR (no load on the platform); see NOTES.
+    backfill_start: "2015-01-01"
+    refetch_window_days: 60    # TSOs correct load for weeks; the daily run re-downloads 2 months
+    daily_indicator: entsoe_load
+    overnight_indicator: entsoe_overnight_load
+    # Area per country: countries.yaml entsoe_code unless listed here, either as a
+    # code or as {area, from, to} pieces where the published area changed. Country
+    # codes are preferred to bidding zones: DE (Germany) runs from 2015, while the
+    # DE_AT_LU zone (to 2018-09) includes Austria and DE_LU (from 2018-10) Luxembourg.
+    areas: {}
+
+  neso:
+    enabled: true
+    # NESO data portal (GB system operator), CKAN API, no key. Half-hourly demand:
+    # yearly "Historic Demand Data" CSVs (settled, ~21 days in arrears) plus the
+    # "Demand Data Update" CSV for the latest days (actuals to the current half hour).
+    # Limits: 1 API request/second, 2 datastore requests/minute (downloads spaced 31 s).
+    base_url: https://api.neso.energy
+    historic_dataset: historic-demand-data
+    update_dataset: daily-demand-update
+    country: GBR
+    backfill_start: "2015-01-01"
+    refetch_window_days: 365   # embedded solar and demand are corrected months later
+    daily_indicator: neso_load
+    overnight_indicator: neso_overnight_load
+
+  comtrade:
+    enabled: true
+    key_env: COMTRADE_SUBSCRIPTION_KEY
+    refetch_window_days: 730
+    periods_per_call: 12       # months per call; all reporters in one call
+    max_calls_per_run: 60      # free tier allows 500 calls/day; a full 2015 backfill needs ~24
+    totals:
+      exports_indicator: comtrade_exports
+      imports_indicator: comtrade_imports
+    mirror:                    # Taiwan doesn't report: sum partners' trade with 490
+      partner_code: 490        # "Other Asia, nes"
+      country: TWN
+      exports_indicator: comtrade_mirror_exports
+      imports_indicator: comtrade_mirror_imports
+      reporters_indicator: comtrade_mirror_reporters
+    combined_jan_feb: [CHN]    # split a combined Jan+Feb figure evenly when January is missing
+    # Reporting speed varies a lot (latest month on 2026-09-27: BRA Aug 2026; most Jul;
+    # NLD/POL/GBR Jun; ITA/ESP/THA/ZAF May; SAU Apr; SGP Mar; FRA/KOR/TUR Dec 2025; CHN Dec 2024).
+    # Countries not listed use the indicator's publication_lag_days (60).
+    publication_lag_days_by_country:
+      {BRA: 30, NLD: 90, POL: 90, GBR: 90, ITA: 120, ESP: 120, THA: 120, ZAF: 120, SAU: 150, SGP: 180, FRA: 300, KOR: 300, TUR: 300, CHN: 400}
+
+  imf:
+    enabled: true
+    # IMF data portal, SDMX 3.0 API, no key (checked 2026-09-30). IMTS: International Trade
+    # in Goods by partner country (formerly DOTS), monthly, US dollars, partner = world.
+    # One request per run for every country and both flows. Series are "mixed" (reported
+    # data plus IMF staff estimates, no per-month flag). Taiwan has no data.
+    base_url: https://api.imf.org/external/sdmx/3.0
+    dataflow: IMF.STA/IMTS
+    counterpart: G001          # World
+    backfill_start: "2015-01-01"
+    refetch_window_days: 730   # revised as late reports replace estimates
+    series:
+      - {code: XG_FOB_USD, indicator: imf_exports}   # exports of goods, FOB
+      - {code: MG_CIF_USD, indicator: imf_imports}   # imports of goods, CIF (FOB only for a few countries)
+    # Primary Commodity Prices (PCPS), monthly averages in US dollars, world prices stored as WLD.
+    # Second request per run. Replaces FRED's delayed copies (PLAN D55, D56).
+    commodity_prices:
+      dataflow: IMF.RES/PCPS
+      area: G001
+      series:
+        - {code: PCOPP, indicator: imf_copper}     # copper, grade A cathode, LME spot, USD per metric ton
+        - {code: PNGASEU, indicator: imf_eu_gas}   # natural gas, Netherlands TTF day-ahead, USD per MMBtu
+
+  cpb:
+    enabled: true
+    # CPB World Trade Monitor (Netherlands Bureau for Economic Policy Analysis), public, no key
+    # (checked 2026-10-07). The latest release page redirects to the newest month's page, which
+    # links one Excel file holding every series. Releases revise history, so every run reads the
+    # whole file (two requests). Single countries and the world only (PLAN D53).
+    latest_url: https://www.cpb.nl/en/worldtrademonitor/latest
+    backfill_start: "2015-01-01"
+    resume_from: backfill_start
+    refetch_window_days: 5000
+    series:
+      - {code: xgz_w1_qnmi_sn, indicator: cpb_export_volume, country: WLD}
+      - {code: xgz_us_qnmi_sn, indicator: cpb_export_volume, country: USA}
+      - {code: xgz_gb_qnmi_sn, indicator: cpb_export_volume, country: GBR}
+      - {code: xgz_jp_qnmi_sn, indicator: cpb_export_volume, country: JPN}
+      - {code: xgz_cn_qnmi_sn, indicator: cpb_export_volume, country: CHN}
+      - {code: xgz_w1_pdmi_sn, indicator: cpb_export_price, country: WLD}
+      - {code: xgz_us_pdmi_sn, indicator: cpb_export_price, country: USA}
+      - {code: xgz_gb_pdmi_sn, indicator: cpb_export_price, country: GBR}
+      - {code: xgz_jp_pdmi_sn, indicator: cpb_export_price, country: JPN}
+      - {code: xgz_cn_pdmi_sn, indicator: cpb_export_price, country: CHN}
+      - {code: mgz_w1_qnmi_sn, indicator: cpb_import_volume, country: WLD}
+      - {code: mgz_us_qnmi_sn, indicator: cpb_import_volume, country: USA}
+      - {code: mgz_gb_qnmi_sn, indicator: cpb_import_volume, country: GBR}
+      - {code: mgz_jp_qnmi_sn, indicator: cpb_import_volume, country: JPN}
+      - {code: mgz_cn_qnmi_sn, indicator: cpb_import_volume, country: CHN}
+      - {code: mgz_w1_pdmi_sn, indicator: cpb_import_price, country: WLD}
+      - {code: mgz_us_pdmi_sn, indicator: cpb_import_price, country: USA}
+      - {code: mgz_gb_pdmi_sn, indicator: cpb_import_price, country: GBR}
+      - {code: mgz_jp_pdmi_sn, indicator: cpb_import_price, country: JPN}
+      - {code: mgz_cn_pdmi_sn, indicator: cpb_import_price, country: CHN}
+
+  eurostat:
+    enabled: true
+    base_url: https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1
+    refetch_window_days: 730   # indices and seasonal factors are revised
+    series:
+      - dataset: sts_inpr_m
+        # freq.indic_bt.nace_r2.s_adj.unit.geo: monthly production, industry excl.
+        # construction (B-D), seasonally and calendar adjusted, index 2021=100
+        key: "M.PRD.B-D.SCA.I21.{geo}"
+        indicator: eurostat_ip
+        geo: {DEU: DE, FRA: FR, ITA: IT, ESP: ES, NLD: NL, POL: PL}   # EU members only
+
+  oecd:
+    enabled: true
+    base_url: https://sdmx.oecd.org/public/rest/data
+    refetch_window_days: 730
+    series:
+      # REF_AREA.FREQ.MEASURE.UNIT.ACTIVITY.ADJUSTMENT.TRANSFORMATION.TIME_HORIZ.METHODOLOGY
+      - dataflow: "OECD.SDD.STES,DSD_STES@DF_INDSERV,"
+        key: "{area}.M.PRVM.IX.BTE.Y._Z._Z.N"   # production volume, industry excl. construction, SA
+        indicator: oecd_ip
+        areas: [CAN, MEX, BRA, GBR, TUR, IND, JPN, KOR]
+      - dataflow: "OECD.SDD.STES,DSD_STES@DF_INDSERV,"
+        key: "{area}.M.PRVM.IX.C.Y._Z._Z.N"     # Indonesia and South Africa have manufacturing only
+        indicator: oecd_ip_manufacturing
+        areas: [IDN, ZAF]
+    # Latest month on 2026-09-27: BRA/KOR Jul 2026, IDN Mar 2026, others Jun 2026.
+    # ZAF is on the 200-day manufacturing indicator (set for IDN) but publishes like the rest.
+    publication_lag_days_by_country: {BRA: 55, KOR: 55, ZAF: 75}
+
+  openmeteo:
+    enabled: true
+    # Historical archive (ERA5 plus a preliminary model for the last few days).
+    # Free tier is non-commercial only; data are CC-BY 4.0 (see NOTES).
+    base_url: https://archive-api.open-meteo.com/v1/archive
+    refetch_window_days: 30        # the latest days are revised when ERA5 arrives
+    resume_from: backfill_start    # every run fills missing years, newest first
+    max_weighted_calls_per_run: 4000     # free tier: 5,000/hour, 10,000/day
+    max_weighted_calls_per_minute: 400   # free tier: 600/minute
+    hdd_base: 18.0
+    cdd_base: 22.0
+    indicators:
+      temp_indicator: openmeteo_temp_mean
+      hdd_indicator: openmeteo_hdd18
+      cdd_indicator: openmeteo_cdd22
+
+  prices:
+    enabled: true
+    # yfinance first (adjusted closes), Stooq CSV as fallback per ticker.
+    # Adjusted closes are re-based after every dividend or split, so every run
+    # re-downloads the full history and the store keeps the revisions.
+    resume_from: backfill_start
+    refetch_window_days: 5000
+    # Yahoo's adjusted closes jitter by ~1e-7 (float32 rounding) between downloads;
+    # treat changes under 1e-6 as unchanged. Dividend re-basings are 0.1-3%.
+    change_tolerance: 1.0e-6
+    country_etf_indicator: prices_country_etf   # tickers: countries.yaml country_etf
+    fx_indicator: prices_fx                     # pairs: countries.yaml fx_pair (USD<CCY>)
+    benchmark: {ticker: URTH, indicator: prices_benchmark}   # MSCI World
+    sector:
+      - {ticker: COPX, indicator: prices_copper_miners}    # H4: copper miners ETF
+      - {ticker: HG=F, indicator: prices_copper_future}    # H4: COMEX copper, front month
+      - {ticker: BDRY, indicator: prices_freight}          # H5: Breakwave dry bulk shipping ETF
+      - {ticker: BZ=F, indicator: prices_brent_future}     # H5: ICE Brent, front month
+      - {ticker: TTF=F, indicator: prices_ttf_gas}         # H6: Dutch TTF gas, front month
+      - {ticker: EXV7.DE, indicator: prices_eu_chemicals}  # H6: iShares STOXX Europe 600 Chemicals UCITS ETF (DE), Xetra (PLAN D20)
+    # Config ticker -> provider symbol where the default rule doesn't fit.
+    # Defaults: yfinance uses the ticker (FX USDEUR -> EUR=X); Stooq uses
+    # ewg.us for US ETFs, usdeur for FX, exv7.de for suffixed listings.
+    symbols:
+      yfinance: {}
+      stooq: {HG=F: hg.f, BZ=F: cb.f, TTF=F: null}
+    stooq_url: https://stooq.com/q/d/l/

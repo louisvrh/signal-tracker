@@ -1,0 +1,23 @@
+{
+ "success": true,
+ "result": {
+  "name": "daily-demand-update",
+  "title": "Demand Data Update",
+  "resources": [
+   {
+    "id": "177f6fa4-ae49-4182-81ea-0c6b35f26ca6",
+    "name": "Demand Data Update",
+    "format": "CSV",
+    "url": "https://api.neso.energy/dataset/7a12172a-939c-404c-b581-a6128b74f588/resource/177f6fa4-ae49-4182-81ea-0c6b35f26ca6/download/demanddataupdate.csv",
+    "last_modified": "2026-09-30T08:20:08.141243"
+   },
+   {
+    "id": "974b8c00-9058-4883-bf34-268e53ed9d15",
+    "name": "Frequently Asked Questions (FAQ)",
+    "format": "DOC",
+    "url": "https://api.neso.energy/dataset/7a12172a-939c-404c-b581-a6128b74f588/resource/974b8c00-9058-4883-bf34-268e53ed9d15/download/faq-neso.docx",
+    "last_modified": "2024-10-21T13:26:14.945315"
+   }
+  ]
+ }
+}

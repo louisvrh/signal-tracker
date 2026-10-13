@@ -1,0 +1,16 @@
+# Named transform chains for the dashboard workbench (PLAN D32, D34).
+# Each chain is a short string of steps from tracker/signals/chain.py, e.g. stl>sma(28d)>rz(3y).
+# The first five are the defaults. Presets saved from the dashboard are added below them;
+# saving rewrites this file (the dashboard's one write).
+
+presets:
+  - name: Raw
+    chain: level
+  - name: Smoothed 28d
+    chain: sma(28d)
+  - name: Seasonally adjusted
+    chain: hol>stl
+  - name: Business-cycle band
+    chain: cf(1.5y,8y)
+  - name: Short cycle (2-18 months)
+    chain: cf(2m,18m)

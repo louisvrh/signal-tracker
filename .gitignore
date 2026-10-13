@@ -1,0 +1,14 @@
+# Secrets
+.env
+.streamlit/secrets.toml
+
+# Data and logs (never committed)
+data/
+logs/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
